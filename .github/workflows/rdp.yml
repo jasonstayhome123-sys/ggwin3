@@ -1,4 +1,4 @@
-name: Windows-Browser-Ultimate
+name: Windows-Browser-Final-V6
 
 on: 
   workflow_dispatch:
@@ -7,19 +7,19 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-    - name: Connect DWService Directly
+    - name: Connect DWService
       run: |
         # エージェントをダウンロード
         Invoke-WebRequest https://www.dwservice.net/download/dwagent_x86.exe -OutFile dwagent.exe
         
-        # インストールせず、直接「実行モード」で接続
-        # -silent の代わりに -run モードを試します
-        Start-Process .\dwagent.exe -ArgumentList "-run key=738-724-375"
+        # 【重要】新しいキーをここに入れ、バックグラウンドで強制実行
+        # -run オプションはインストールなしで即座に接続を開始します
+        Start-Process .\dwagent.exe -ArgumentList "-run key=604-355-241"
         
-        Write-Host "Connecting to DWService..."
+        Write-Host "Connecting..."
         Start-Sleep -Seconds 30
 
     - name: Keep Alive
       run: |
-        Write-Host "Check your DWService dashboard now!"
+        # 接続が維持されるよう、長時間スリープ
         Start-Sleep -Seconds 21600
