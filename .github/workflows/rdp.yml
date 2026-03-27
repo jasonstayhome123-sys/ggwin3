@@ -17,25 +17,30 @@ jobs:
 
     - name: Create User & Enable RDP
       run: |
-        # 新しいユーザー 'remoteuser' を作成し、管理者権限を付与
         net user remoteuser P@ssword1234! /add
         net localgroup administrators remoteuser /add
-        
-        # RDPを有効化
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
 
-    - name: Create Tunnel
+    - name: Start Ngrok & Show Address
       run: |
-        Start-Process .\ngrok\ngrok.exe -ArgumentList "tcp 3389"
-        echo "Waiting for ngrok to initialize..."
-        Start-Sleep -Seconds 30
-
-    - name: Get RDP Address
-      run: |
-        $response = (curl http://localhost:4040/api/tunnels | ConvertFrom-Json)
-        $address = $response.tunnels[0].public_url
+        # ログファイルに出力しながら起動
+        Start-Process .\ngrok\ngrok.exe -ArgumentList "tcp --log=stdout 3389" -RedirectStandardOutput "ngrok.log"
+        
+        Write-Host "Waiting for ngrok address..."
+        $address = ""
+        while (-not $address) {
+            if (Test-Path "ngrok.log") {
+                $log = Get-Content "ngrok.log"
+                $line = $log | Select-String -Pattern "url=tcp://[^ ]+"
+                if ($line) {
+                    $address = $line.Matches.Value.Substring(4) # 'url='を除去
+                }
+            }
+            Start-Sleep -Seconds 2
+        }
+        
         Write-Host "------------------------------------------"
         Write-Host "RDP Address: $address"
         Write-Host "User: remoteuser"
