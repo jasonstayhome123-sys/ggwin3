@@ -1,4 +1,4 @@
-name: Windows-RDP-Cloudflare
+name: Windows-Browser-Final
 
 on: 
   workflow_dispatch:
@@ -7,26 +7,19 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-    - name: Download Cloudflared
+    - name: Download DWService Agent
       run: |
-        Invoke-WebRequest https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.msi -OutFile cloudflared.msi
-        Start-Process msiexec.exe -ArgumentList "/i cloudflared.msi /quiet /norestart" -Wait
+        # エージェントのダウンロード
+        Invoke-WebRequest https://www.dwservice.net/download/dwagent_x86.exe -OutFile dwagent.exe
 
-    - name: Create User & Enable RDP
+    - name: Install & Connect
       run: |
-        net user remoteuser P@ssword1234! /add
-        net localgroup administrators remoteuser /add
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
-        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
+        # インストールと接続の実行
+        # 先ほどのキー「728-983-580」を直接指定します
+        .\dwagent.exe -install -key 728-983-580
+      continue-on-error: true
 
-    - name: Start Cloudflare Tunnel
+    - name: Keep Alive
       run: |
-        # 認証なしの「Quick Tunnel」を開始
-        Start-Process "C:\Program Files (x86)\cloudflared\cloudflared.exe" -ArgumentList "access tcp --hostname localhost:3389 --url tcp://localhost:3389" -RedirectStandardOutput "tunnel.log"
-        # もしくは単純に名前解決できる公開URLを発行
-        Start-Process "C:\Program Files (x86)\cloudflared\cloudflared.exe" -ArgumentList "tunnel --url rdp://localhost:3389" -RedirectStandardOutput "tunnel.log"
-        
-        Write-Host "Waiting for Cloudflare address..."
-        Start-Sleep -Seconds 20
-        Get-Content "tunnel.log" | Select-String "trycloudflare.com"
+        # 6時間セッションを維持
+        Start-Sleep -Seconds 21600
