@@ -1,4 +1,4 @@
-name: Windows-Browser-Final
+name: Windows-Browser-Final-V2
 
 on: 
   workflow_dispatch:
@@ -7,19 +7,18 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-    - name: Download DWService Agent
+    - name: Download & Install DWService
       run: |
-        # エージェントのダウンロード
+        # エージェントをダウンロード
         Invoke-WebRequest https://www.dwservice.net/download/dwagent_x86.exe -OutFile dwagent.exe
-
-    - name: Install & Connect
-      run: |
-        # インストールと接続の実行
-        # 先ほどのキー「728-983-580」を直接指定します
-        .\dwagent.exe -install -key 728-983-580
+        
+        # 確実にインストールを完了させるためのコマンド
+        # -silent オプションを追加し、標準入力から設定を流し込みます
+        Start-Process .\dwagent.exe -ArgumentList "-silent key=728-983-580" -Wait
       continue-on-error: true
 
     - name: Keep Alive
       run: |
-        # 6時間セッションを維持
+        # 接続が確認できるまでログを出力し続ける
+        Write-Host "Checking for connection..."
         Start-Sleep -Seconds 21600
