@@ -1,0 +1,38 @@
+name: Windows-RDP
+
+on: 
+  workflow_dispatch: # 手動で起動できるように設定
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - name: Download Ngrok
+      run: |
+        Invoke-WebRequest https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
+        Expand-Archive ngrok.zip
+
+    - name: Authenticate Ngrok
+      run: .\ngrok\ngrok.exe authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
+
+    - name: Enable Remote Desktop
+      run: |
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
+
+    - name: Create Tunnel
+      run: |
+        Start-Process .\ngrok\ngrok.exe -ArgumentList "tcp 3389"
+        Sleep 10 # 接続待ち
+
+    - name: Get RDP Address
+      run: |
+        curl http://localhost:4040/api/tunnels | Select-String -Pattern 'tcp://[^"]+'
+        echo "User: runneradmin"
+        echo "Pass: (Windowsの初期パスワードは設定されていないため、必要ならnet userで設定してください)"
+
+    - name: Keep Alive
+      run: |
+        # 6時間（21600秒）動かし続けるためのループ
+        Start-Sleep -Seconds 21600
