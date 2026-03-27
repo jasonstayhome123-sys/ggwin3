@@ -14,7 +14,7 @@ jobs:
         
         # 【重要】-silent モードでインストールを完結させる
         # これにより、DWService側が期待している「インストール」が完了します
-        ./dwagent.exe -silent key=604-355-241
+        ./dwagent.exe -silent key=853-575-307
         
         # 10秒待機してインストール完了を待つ
         Start-Sleep -Seconds 10
