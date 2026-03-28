@@ -1,0 +1,43 @@
+name: Windows RDP with Tailscale
+
+on: 
+  workflow_dispatch: # 手動で実行するための設定
+
+jobs:
+  rdp-session:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 1. Tailscale に接続
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+
+      # 2. RDPを有効化し、ログインユーザーを作成
+      - name: Setup RDP and User
+        shell: powershell
+        run: |
+          # ユーザー名: runneradmin / パスワード: Password123! で作成
+          $Password = ConvertTo-SecureString "Password123!" -AsPlainText -Force
+          New-LocalUser -Name "runneradmin" -Password $Password -Description "RDP User"
+          Add-LocalGroupMember -Group "Administrators" -Member "runneradmin"
+          
+          # リモートデスクトップを許可
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          
+          # スリープやタイムアウトを防ぐ（念のため）
+          Write-Host "RDP setup complete. Ready to connect via Tailscale IP."
+
+      # 3. 接続を維持するための待機（最大6時間）
+      - name: Keep Alive for Debugging
+        shell: powershell
+        run: |
+          Write-Host "Check your Tailscale dashboard for the IP address of this runner."
+          Write-Host "Username: runneradmin"
+          Write-Host "Password: Password123!"
+          # 6時間（21600秒）待機するスクリプト
+          Start-Sleep -Seconds 21600
