@@ -12,52 +12,35 @@ jobs:
       - name: Install Tailscale
         shell: pwsh
         run: |
-          $ErrorActionPreference = "Stop"
           $msiUrl = "https://pkgs.tailscale.com/stable/tailscale-setup-latest-amd64.msi"
           $msiPath = Join-Path $env:RUNNER_TEMP "tailscale-setup-latest-amd64.msi"
-          
-          Write-Host "Downloading Tailscale..."
           Invoke-WebRequest -Uri $msiUrl -OutFile $msiPath
-
-          Write-Host "Installing Tailscale..."
-          $process = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @(
-            "/i", "`"$msiPath`"",
-            "/qn",
-            "/norestart",
-            "TS_NOLAUNCH=1",
-            "TS_UNATTENDEDMODE=always"
-          )
-
-          if ($process.ExitCode -ne 0) { throw "Install failed" }
-
-          # サービス起動の待機と開始
-          $timeout = 30
-          while (!(Get-Service Tailscale -ErrorAction SilentlyContinue) -and $timeout -gt 0) {
-            Start-Sleep -Seconds 1
-            $timeout--
-          }
-          Start-Service Tailscale
+          Start-Process msiexec.exe -Wait -ArgumentList "/i", "`"$msiPath`"", "/qn", "/norestart", "TS_NOLAUNCH=1"
+          Start-Sleep -Seconds 5
+          Start-Service Tailscale -ErrorAction SilentlyContinue
 
       - name: Setup RDP User and Registry
         shell: pwsh
         run: |
-          $ErrorActionPreference = "Stop"
+          # 1. ユーザー作成 (パスワードをより長く、記号を避けて複雑にする)
+          $username = "rdpadmin"
+          $plainPassword = "GitHubRunner2026SecurePass" # 記号なしで長くする
+          $password = ConvertTo-SecureString $plainPassword -AsPlainText -Force
           
-          # 新規ユーザー作成 (runneradminは既存のため避ける)
-          $username = "rdpuser"
-          $password = ConvertTo-SecureString "Gha-RDP-2026-Pass!" -AsPlainText -Force
-          
+          Write-Host "Checking if user $username exists..."
           if (Get-LocalUser -Name $username -ErrorAction SilentlyContinue) {
             Remove-LocalUser -Name $username
           }
           
-          Write-Host "Creating user: $username"
-          New-LocalUser -Name $username -Password $password -FullName "RDP Admin User"
+          Write-Host "Creating new local user..."
+          New-LocalUser -Name $username -Password $password -FullName "RDP Admin User" -Description "Tailscale RDP"
+          
+          Write-Host "Adding to groups..."
           Add-LocalGroupMember -Group "Administrators" -Member $username
           Add-LocalGroupMember -Group "Remote Desktop Users" -Member $username
 
-          # RDP有効化とNLA(ネットワークレベル認証)の無効化
-          Write-Host "Configuring RDP Registry..."
+          # 2. RDP設定とNLA無効化
+          Write-Host "Configuring RDP and Firewall..."
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 0
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name 'UserAuthentication' -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
@@ -68,19 +51,14 @@ jobs:
           TS_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
         run: |
           $tailscale = "${env:ProgramFiles}\Tailscale\tailscale.exe"
+          & $tailscale up --auth-key="$env:TS_AUTHKEY" --hostname="gha-windows-rdp" --unattended --reset
           
-          # 認証と接続
-          Write-Host "Connecting to Tailnet..."
-          & $tailscale up --auth-key="$env:TS_AUTHKEY" --hostname="gha-windows-rdp" --unattended --reset --accept-routes
-          
-          Write-Host "--- Connection Info ---"
-          & $tailscale ip -4
-          Write-Host "User: rdpuser"
-          Write-Host "Pass: Gha-RDP-2026-Pass!"
-          Write-Host "-----------------------"
+          Write-Host "------------------------------------------"
+          Write-Host "IP Address: $(& $tailscale ip -4)"
+          Write-Host "Username  : rdpadmin"
+          Write-Host "Password  : GitHubRunner2026SecurePass"
+          Write-Host "------------------------------------------"
 
       - name: Keep Alive
         shell: pwsh
-        run: |
-          Write-Host "RDP is ready. Waiting for 6 hours..."
-          Start-Sleep -Seconds 21600
+        run: Start-Sleep -Seconds 21600
