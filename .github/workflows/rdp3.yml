@@ -1,0 +1,86 @@
+name: Windows Runner RDP via Tailscale
+
+on:
+  workflow_dispatch:
+
+jobs:
+  rdp:
+    runs-on: windows-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Install Tailscale
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $msiUrl = "https://pkgs.tailscale.com/stable/tailscale-setup-latest-amd64.msi"
+          $msiPath = Join-Path $env:RUNNER_TEMP "tailscale-setup-latest-amd64.msi"
+          
+          Write-Host "Downloading Tailscale..."
+          Invoke-WebRequest -Uri $msiUrl -OutFile $msiPath
+
+          Write-Host "Installing Tailscale..."
+          $process = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @(
+            "/i", "`"$msiPath`"",
+            "/qn",
+            "/norestart",
+            "TS_NOLAUNCH=1",
+            "TS_UNATTENDEDMODE=always"
+          )
+
+          if ($process.ExitCode -ne 0) { throw "Install failed" }
+
+          # サービス起動の待機と開始
+          $timeout = 30
+          while (!(Get-Service Tailscale -ErrorAction SilentlyContinue) -and $timeout -gt 0) {
+            Start-Sleep -Seconds 1
+            $timeout--
+          }
+          Start-Service Tailscale
+
+      - name: Setup RDP User and Registry
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          
+          # 新規ユーザー作成 (runneradminは既存のため避ける)
+          $username = "rdpuser"
+          $password = ConvertTo-SecureString "Gha-RDP-2026-Pass!" -AsPlainText -Force
+          
+          if (Get-LocalUser -Name $username -ErrorAction SilentlyContinue) {
+            Remove-LocalUser -Name $username
+          }
+          
+          Write-Host "Creating user: $username"
+          New-LocalUser -Name $username -Password $password -FullName "RDP Admin User"
+          Add-LocalGroupMember -Group "Administrators" -Member $username
+          Add-LocalGroupMember -Group "Remote Desktop Users" -Member $username
+
+          # RDP有効化とNLA(ネットワークレベル認証)の無効化
+          Write-Host "Configuring RDP Registry..."
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 0
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name 'UserAuthentication' -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+      - name: Connect to Tailscale
+        shell: pwsh
+        env:
+          TS_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
+        run: |
+          $tailscale = "${env:ProgramFiles}\Tailscale\tailscale.exe"
+          
+          # 認証と接続
+          Write-Host "Connecting to Tailnet..."
+          & $tailscale up --auth-key="$env:TS_AUTHKEY" --hostname="gha-windows-rdp" --unattended --reset --accept-routes
+          
+          Write-Host "--- Connection Info ---"
+          & $tailscale ip -4
+          Write-Host "User: rdpuser"
+          Write-Host "Pass: Gha-RDP-2026-Pass!"
+          Write-Host "-----------------------"
+
+      - name: Keep Alive
+        shell: pwsh
+        run: |
+          Write-Host "RDP is ready. Waiting for 6 hours..."
+          Start-Sleep -Seconds 21600
