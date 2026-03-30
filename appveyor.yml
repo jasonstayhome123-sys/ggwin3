@@ -9,11 +9,11 @@ environment:
   RDP_USERNAME: rdpadmin
   # AppVeyor の UI で暗号化した値に置き換えてください
   RDP_PASSWORD:
-    secure: <ENCRYPTED_RDP_PASSWORD>
+    secure: qxqk7YETgxDEOgXZ/XmF/ACQctBMb7JTu3gCfCiQdh4=
   CRD_AUTH_CODE:
-    secure: <ENCRYPTED_CRD_AUTH_CODE>
+    secure: lEZU3oJHTbjziclfg8/5WmB3pNHodw+700T01oRQZASlLJWxAIGnwtCta/FK/mSuXxScs+MI/mUYqyvHFxrxRnaSWNbGrLC5/BL81GqgAf0=
   CRD_PIN:
-    secure: <ENCRYPTED_CRD_PIN>
+    secure: JvQ5xpCgQsyYdE7JYqAcWQ==
 
 install:
   - ps: |
