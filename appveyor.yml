@@ -6,11 +6,11 @@ image: Visual Studio 2022
 # 環境変数の設定 (AppVeyorの「Encrypt data」で作成した値をここに貼る)
 environment:
   RDP_PASSWORD:
-    secure: [qxqk7YETgxDEOgXZ/XmF/ACQctBMb7JTu3gCfCiQdh4=]
+    secure: "qxqk7YETgxDEOgXZ/XmF/ACQctBMb7JTu3gCfCiQdh4="
   CRD_AUTH_CODE:
-    secure: [/FnNAzBx+xKu7o64zQyZBZLKM87CTZYFKrv0sXRgWFwRxQ4fmJLFD3zzwuTCWnYxpwae8fWHuqQW/VI5fW0qQZGiPk/KHbvSAKlvvLIV+LM=]
+    secure: "/FnNAzBx+xKu7o64zQyZBZLKM87CTZYFKrv0sXRgWFwRxQ4fmJLFD3zzwuTCWnYxpwae8fWHuqQW/VI5fW0qQZGiPk/KHbvSAKlvvLIV+LM="
   CRD_PIN:
-    secure: [JvQ5xpCgQsyYdE7JYqAcWQ==]
+    secure: "JvQ5xpCgQsyYdE7JYqAcWQ=="
   RDP_USERNAME: rdpadmin
 
 # ビルド（セットアップ）工程
