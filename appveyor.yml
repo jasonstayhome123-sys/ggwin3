@@ -8,7 +8,7 @@ environment:
   RDP_PASSWORD:
     secure: [qxqk7YETgxDEOgXZ/XmF/ACQctBMb7JTu3gCfCiQdh4=]
   CRD_AUTH_CODE:
-    secure: [あなたの暗号化AuthCode]
+    secure: [/FnNAzBx+xKu7o64zQyZBZLKM87CTZYFKrv0sXRgWFwRxQ4fmJLFD3zzwuTCWnYxpwae8fWHuqQW/VI5fW0qQZGiPk/KHbvSAKlvvLIV+LM=]
   CRD_PIN:
     secure: [JvQ5xpCgQsyYdE7JYqAcWQ==]
   RDP_USERNAME: rdpadmin
